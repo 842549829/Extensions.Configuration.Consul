@@ -7,7 +7,9 @@ namespace Extensions.Configuration.Consul
         /// <summary>
         /// The prefix string of consul key
         /// </summary>
-        public string Folder { get; set; }
+        public string RootFolder { get; set; }
+
+        public string[] Folders { get; set; }
 
     }
 

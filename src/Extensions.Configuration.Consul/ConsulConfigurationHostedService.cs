@@ -52,7 +52,7 @@ namespace Extensions.Configuration.Consul
                 options.Address = ObserverManager.Configuration.ClientConfiguration.Address;
             }))
             {
-                var result = await client.KV.List(ObserverManager.Configuration.QueryOptions.Folder, new QueryOptions
+                var result = await client.KV.List(ObserverManager.Configuration.QueryOptions.RootFolder, new QueryOptions
                 {
                     Token = ObserverManager.Configuration.ClientConfiguration.Token,
                     Datacenter = ObserverManager.Configuration.ClientConfiguration.Datacenter,

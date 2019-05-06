@@ -19,12 +19,11 @@ namespace Example
                 //config.SetBasePath(Directory.GetCurrentDirectory());
                 //config.AddJsonFile("appsettings.json", false, true);
                 //config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", false, true);
+
                 var configurationRoot = config.Build();
-                var address = configurationRoot["ConfigurationConsul:Address"];
-                var folder = configurationRoot["ConfigurationConsul:Folder"];
-                var token = configurationRoot["ConfigurationConsul:Token"];
-                var datacenter = configurationRoot["ConfigurationConsul:Datacenter"];
-                config.AddConsul(address, token, folder, datacenter);
+                var consulConfig = configurationRoot.GetSection("ConfigurationConsul").Get<ConsulConfigurationOptions>();
+
+                config.AddConsul(consulConfig);
                 //config.AddConsul(args);
                 config.AddCommandLine(args);
             }).UseStartup<Startup>();

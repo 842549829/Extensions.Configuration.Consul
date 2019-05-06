@@ -39,23 +39,80 @@ namespace Extensions.Configuration.Consul
                 options.Address = Configuration.ClientConfiguration.Address;
             }))
             {
-                var result = await client.KV.List(Configuration.QueryOptions.Folder, new QueryOptions
+                var result = await client.KV.List(Configuration.QueryOptions.RootFolder, new QueryOptions
                 {
                     Token = Configuration.ClientConfiguration.Token,
                     Datacenter = Configuration.ClientConfiguration.Datacenter
                 });
 
                 if (result.Response == null || !result.Response.Any())
-                    return;
-
-                foreach (var item in result.Response)
                 {
-                    item.Key = item.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder);
-                    if (string.IsNullOrWhiteSpace(item.Key))
-                        return;
-                    SetData(item);
+                    return;
+                }
+
+                SetData(result.Response.ToList());
+                //foreach (var item in result.Response)
+                //{
+                //    item.Key = item.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder);
+                //    if (string.IsNullOrWhiteSpace(item.Key))
+                //        return;
+                //    SetData(item);
+                //}
+            }
+        }
+
+        private void SetData(List<KVPair> kVs)
+        {
+            Data.Clear();
+            if (kVs == null || !kVs.Any())
+            {
+                OnReload();
+                return;
+            }
+            var fo = Configuration.QueryOptions.Folders;
+            var folder = new Dictionary<string, int>();
+            for (var i = 0; i < fo.Length; i++)
+            {
+                folder.Add(fo[i], i);
+            }
+            var list = new List<PrefixItem>();
+            foreach (var item in kVs)
+            {
+                if (string.IsNullOrWhiteSpace(item.Key))
+                {
+                    continue;
+                }
+                var keyPrefix = item.Key.Substring(0, item.Key.LastIndexOf('/') + 1);
+                var key = item.Key.Substring(item.Key.LastIndexOf('/') + 1);
+                if (folder.ContainsKey(keyPrefix))
+                {
+                    list.Add(new PrefixItem
+                    {
+                        Key = key,
+                        Prefix = keyPrefix,
+                        Value = item.Value,
+                        Index = folder[keyPrefix]
+                    });
                 }
             }
+            var filter = list.GroupBy(d => d.Key);
+            foreach (var item in filter)
+            {
+                var data = item.MaxElement(x => x.Index);
+                var dic = Json(item.Key, ReadValue(data.Value));
+                foreach (var d in dic)
+                {
+                    if (Data.ContainsKey(d.Key))
+                    {
+                        Data[d.Key] = d.Value;
+                    }
+                    else
+                    {
+                        Set(d.Key, d.Value);
+                    }
+                }
+            }
+            OnReload();
         }
 
         private void SetData(KVPair item)
@@ -101,43 +158,44 @@ namespace Extensions.Configuration.Consul
 
         public void OnChange(List<KVPair> kVs, ILogger logger)
         {
-            if (kVs == null || !kVs.Any())
-            {
-                Data.Clear();
-                OnReload();
-                return;
-            }
+            SetData(kVs);
+            //if (kVs == null || !kVs.Any())
+            //{
+            //    Data.Clear();
+            //    OnReload();
+            //    return;
+            //}
 
-            var deleted = Data.Where(p => kVs.All(c =>
-                p.Key != c.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder))).ToList();
+            //var deleted = Data.Where(p => kVs.All(c =>
+            //    p.Key != c.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder))).ToList();
 
-            foreach (var del in deleted)
-            {
-                logger.LogTrace($"Remove key [{del.Key}]");
-                Data.Remove(del.Key);
-            }
+            //foreach (var del in deleted)
+            //{
+            //    logger.LogTrace($"Remove key [{del.Key}]");
+            //    Data.Remove(del.Key);
+            //}
 
-            foreach (var item in kVs)
-            {
-                item.Key = item.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder);
-                if (string.IsNullOrWhiteSpace(item.Key))
-                    continue;
-                var newValue = ReadValue(item.Value);
-                if (Data.TryGetValue(item.Key, out var oldValue))
-                {
-                    if (oldValue == newValue)
-                        continue;
+            //foreach (var item in kVs)
+            //{
+            //    item.Key = item.Key.TrimFolderPrefix(Configuration.QueryOptions.Folder);
+            //    if (string.IsNullOrWhiteSpace(item.Key))
+            //        continue;
+            //    var newValue = ReadValue(item.Value);
+            //    if (Data.TryGetValue(item.Key, out var oldValue))
+            //    {
+            //        if (oldValue == newValue)
+            //            continue;
 
-                    SetData(item);
-                    logger.LogTrace($"The value of key [{item.Key}] is changed from [{oldValue}] to [{newValue}]");
-                }
-                else
-                {
-                    SetData(item);
-                    logger.LogTrace($"Added key [{item.Key}][{newValue}]");
-                }
-                OnReload();
-            }
+            //        SetData(item);
+            //        logger.LogTrace($"The value of key [{item.Key}] is changed from [{oldValue}] to [{newValue}]");
+            //    }
+            //    else
+            //    {
+            //        SetData(item);
+            //        logger.LogTrace($"Added key [{item.Key}][{newValue}]");
+            //    }
+            //    OnReload();
+            //}
         }
     }
 
@@ -271,5 +329,16 @@ namespace Extensions.Configuration.Consul
 
         private static readonly ResourceManager _resourceManager
             = new ResourceManager("Microsoft.Extensions.Configuration.Json.Resources", typeof(JsonConvert).GetTypeInfo().Assembly);
+    }
+
+    public class PrefixItem
+    {
+        public string Prefix { get; set; }
+
+        public string Key { get; set; }
+
+        public byte[] Value { get; set; }
+
+        public int Index { get; set; }
     }
 }

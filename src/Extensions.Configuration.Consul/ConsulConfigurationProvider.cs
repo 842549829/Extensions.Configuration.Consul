@@ -84,6 +84,10 @@ namespace Extensions.Configuration.Consul
                 }
                 var keyPrefix = item.Key.Substring(0, item.Key.LastIndexOf('/') + 1);
                 var key = item.Key.Substring(item.Key.LastIndexOf('/') + 1);
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
                 if (folder.ContainsKey(keyPrefix))
                 {
                     list.Add(new PrefixItem

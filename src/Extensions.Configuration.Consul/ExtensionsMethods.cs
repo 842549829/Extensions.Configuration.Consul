@@ -71,7 +71,7 @@ namespace Extensions.Configuration.Consul
             return defaultValue;
         }
 
-        public static IServiceCollection AddConsulConfigurationCenter(this IServiceCollection services, int blockingQueryWaitSeconds = 180)
+        public static IServiceCollection AddConsulConfigurationCenter(this IServiceCollection services, int blockingQueryWaitSeconds = 10)
         {
             if (blockingQueryWaitSeconds <= 0)
                 throw new ArgumentException("The value of blockingQueryWaitSeconds must be greater than 0.", nameof(blockingQueryWaitSeconds));

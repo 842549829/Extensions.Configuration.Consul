@@ -15,6 +15,6 @@ namespace Extensions.Configuration.Consul
 
     public class HostedServiceOptions
     {
-        public TimeSpan BlockingQueryWait { get; set; } = TimeSpan.FromMinutes(3);
+        public TimeSpan BlockingQueryWait { get; set; } = TimeSpan.FromSeconds(10);
     }
 }
